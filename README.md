@@ -1,8 +1,8 @@
 # Cricket Ball Detection & Tracking (Single Camera)
 
-A complete computer vision pipeline to detect, track, and visualize the trajectory of a cricket ball from a single static camera video.
+This repository contains a complete computer vision pipeline to detect, track, and visualize the trajectory of a cricket ball from a single static camera video.
 
-The system detects the ball centroid per frame, handles occlusions, outputs structured annotations, and generates a processed video with trajectory overlay.
+The system detects the ball centroid in each frame where it is visible, handles missed detections and occlusions, outputs structured per-frame annotations, and generates a processed video with trajectory overlay.
 
 ---
 
@@ -10,10 +10,10 @@ The system detects the ball centroid per frame, handles occlusions, outputs stru
 
 - Per-frame ball centroid detection
 - Kalman Filter–based tracking for smooth trajectories
-- Frame-wise annotation output (CSV)
+- Frame-wise annotation output (CSV format)
 - Processed video with centroid and trajectory overlay
-- Graceful handling of missed detections and occlusions
-- Fully reproducible end-to-end pipeline
+- Graceful handling of occlusions and missed detections
+- Fully reproducible end-to-end inference pipeline
 
 ---
 
@@ -29,7 +29,7 @@ cricket-ball-detection/
 │   └── main.py          # End-to-end pipeline
 │
 ├── annotations/         # Per-frame CSV outputs
-├── results/             # Processed videos with trajectory
+├── results/             # Processed videos with trajectory overlay
 ├── models/              # Trained YOLO model (.pt)
 ├── input/               # Input videos
 │
@@ -50,14 +50,12 @@ python -m venv venv
 
 Activate the environment:
 
-Linux / macOS
-
+Linux / macOS:
 ```bash
 source venv/bin/activate
 ```
 
-Windows
-
+Windows:
 ```bash
 venv\Scripts\activate
 ```
@@ -89,9 +87,9 @@ All dependencies are listed in `requirements.txt`.
 ## Input Format
 
 - Single cricket video from a static camera
-- Supported formats: `.mp4` (recommended)
+- Supported format: `.mp4` (recommended for reproducibility)
 
-Place input video inside:
+Place the input video inside:
 
 ```
 input/
@@ -107,6 +105,8 @@ code/utils/config.py
 ---
 
 ## Running the Pipeline
+
+To run the full detection, tracking, and visualization pipeline:
 
 ```bash
 python code/main.py
@@ -125,7 +125,6 @@ annotations/output_<video_name>.csv
 ```
 
 Format:
-
 ```csv
 frame,x,y,visible
 0,512.3,298.1,1
@@ -147,75 +146,76 @@ Generated at:
 results/trajectory_<video_name>.mp4
 ```
 
-- Red dot indicates the current ball centroid
-- Blue line indicates the ball trajectory
+- A colored dot indicates the current ball centroid
+- A polyline shows the accumulated ball trajectory
 
 ---
 
 ## Model Details
 
 - Detector: YOLOv8 (single-class: ball)
-- Tracker: Kalman Filter (constant velocity model)
+- Tracker: Kalman Filter with a constant velocity motion model
 
-### Why This Approach?
+### Rationale
 
-- YOLO provides fast and accurate small-object detection
-- Kalman filter smooths noisy detections and handles occlusions
-- Simple, interpretable, and industry-aligned solution
+- YOLOv8 provides fast and accurate small-object detection
+- Kalman filtering smooths frame-wise detection noise
+- The approach is simple, interpretable, and aligned with industry practice
+
+---
+
+## Model Used in This Submission
+
+For this submission, a **pre-trained YOLOv8 model (`best.pt`)** is used for cricket ball detection.
+
+The model was trained externally on a cricket ball detection dataset and is included in the `models/` directory to ensure **full reproducibility of inference results**.
+
+The training script is provided for completeness and future retraining, but **model training itself was not performed as part of this submission**.
 
 ---
 
 ## Handling Occlusions and Missed Detections
 
-- No hallucinated detections are produced
-- When the ball is not detected:
+- The system does not hallucinate detections
+- When the ball is not detected in a frame:
   - Coordinates are set to `-1, -1`
   - Visibility flag is set to `0`
-- Kalman filter maintains internal state for smooth trajectory prediction
+- The Kalman filter maintains internal state to ensure smooth trajectory continuity
 
 ---
 
 ## Training the Model (Optional)
 
-To train a custom cricket ball detector:
+A training script is provided to allow retraining or fine-tuning of the detector:
 
 ```bash
 python code/train/train_yolo.py
 ```
 
-After training, move the best model:
-
-```bash
-cp runs/detect/cricket_ball/weights/best.pt models/ball_yolo.pt
-```
-
-Update `MODEL_PATH` in `config.py` accordingly.
+This step is optional and not required to reproduce the results in this repository, as a trained model (`models/best.pt`) is already provided.
 
 ---
 
 ## Common Issues and Fixes
 
-False Positives (Shoes, Gloves):
+False positives (e.g., shoes or gloves):
+- Increase detection confidence threshold
+- Use a domain-specific cricket ball dataset for training
 
-- Increase confidence threshold
-- Train with a domain-specific cricket ball dataset
-
-MOV File Issues on Windows:
-Convert `.mov` to `.mp4` using FFmpeg:
-
+MOV file issues on Windows:
+- Convert `.mov` videos to `.mp4` using FFmpeg:
 ```bash
 ffmpeg -i input.mov -c:v libx264 input/video.mp4
 ```
 
-Output File Errors:
-
-- Output filenames are auto-sanitized to avoid invalid paths
+Output file errors:
+- Output filenames are sanitized to avoid invalid filesystem paths
 
 ---
 
 ## Reproducibility
 
-The entire pipeline is reproducible using:
+The complete pipeline can be reproduced using:
 
 ```bash
 pip install -r requirements.txt
@@ -231,11 +231,11 @@ A detailed technical report is provided in `report.pdf`, covering:
 - Modelling decisions
 - Fallback logic
 - Assumptions
-- Issues faced and fixes applied
+- Issues encountered and fixes applied
 - Performance improvements and example outputs
 
 ---
 
 ## Conclusion
 
-This project demonstrates a robust, reproducible, and industry-aligned cricket ball tracking system using deep learning for detection and classical filtering for tracking. The pipeline is modular, interpretable, and suitable for real-world sports analytics scenarios.
+This project presents a robust, reproducible, and industry-aligned solution for cricket ball detection and tracking from a single static camera. By combining deep learning–based detection with classical filtering, the system achieves stable tracking performance while remaining interpretable and easy to reproduce.
